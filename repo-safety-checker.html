@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Is This Repo Safe? — Repo Safety Checker</title>
+<style>
+  :root{
+    --bg:#0f1115; --card:#181b22; --line:#2a2f3a; --txt:#e9edf5; --dim:#a3adbf;
+    --green:#2ecc71; --yellow:#f5c542; --red:#ff5c5c; --blue:#4aa3ff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    line-height:1.55;padding:18px}
+  .wrap{max-width:820px;margin:0 auto}
+  h1{font-size:26px;margin:0 0 4px}
+  .sub{color:var(--dim);font-size:15px;margin-bottom:18px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+  .tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+  .tab{flex:1;min-width:180px;padding:12px;border-radius:12px;border:1px solid var(--line);
+    background:#13161c;color:var(--txt);cursor:pointer;font-size:15px;font-weight:600;text-align:center}
+  .tab.on{background:var(--blue);border-color:var(--blue);color:#08111c}
+  input[type=text]{width:100%;padding:14px;font-size:16px;border-radius:10px;
+    border:1px solid var(--line);background:#0d1014;color:var(--txt)}
+  button.go{margin-top:10px;width:100%;padding:15px;font-size:17px;font-weight:700;
+    border:0;border-radius:10px;background:var(--blue);color:#08111c;cursor:pointer}
+  button.go:disabled{opacity:.6;cursor:wait}
+  .hint{color:var(--dim);font-size:13px;margin-top:8px}
+  .verdict{border-radius:14px;padding:18px;margin-bottom:14px;border:2px solid}
+  .verdict h2{margin:0 0 6px;font-size:24px}
+  .v-red{border-color:var(--red);background:rgba(255,92,92,.10)}
+  .v-yellow{border-color:var(--yellow);background:rgba(245,197,66,.10)}
+  .v-green{border-color:var(--green);background:rgba(46,204,113,.10)}
+  .score{font-size:14px;color:var(--dim)}
+  ul.flags{list-style:none;padding:0;margin:10px 0 0}
+  ul.flags li{border:1px solid var(--line);border-radius:10px;padding:11px 12px;margin-bottom:8px;background:#13161c}
+  .sev{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.4px;
+    padding:2px 8px;border-radius:99px;margin-right:8px;vertical-align:2px}
+  .s-high{background:var(--red);color:#2b0000}
+  .s-med{background:var(--yellow);color:#2b2000}
+  .s-ok{background:var(--green);color:#00220f}
+  .why{color:var(--dim);font-size:13.5px;margin-top:4px}
+  .q{border-bottom:1px solid var(--line);padding:12px 0}
+  .q:last-child{border-bottom:0}
+  .qt{font-weight:600;margin-bottom:2px}
+  .qs{color:var(--dim);font-size:13px;margin-bottom:8px}
+  .yn{display:flex;gap:8px}
+  .yn button{flex:1;padding:10px;border-radius:9px;border:1px solid var(--line);
+    background:#0d1014;color:var(--txt);cursor:pointer;font-size:14px;font-weight:600}
+  .yn button.sel-bad{background:var(--red);border-color:var(--red);color:#2b0000}
+  .yn button.sel-good{background:var(--green);border-color:var(--green);color:#00220f}
+  details{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:12px;background:#13161c}
+  summary{cursor:pointer;font-weight:700}
+  .steps{padding-left:20px}
+  .steps li{margin-bottom:7px}
+  .foot{color:var(--dim);font-size:12.5px;text-align:center;margin-top:20px}
+  a{color:var(--blue)}
+  .hidden{display:none}
+  .ur{color:#cfd8e6}
+  .en{color:var(--dim);font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>🛡️ Is This Repo Safe?</h1>
+  <div class="sub">
+    GitHub ka link paste karein — tool aap ko batayega ke ye "tool" aap ko nuqsan pohancha sakta hai ya nahi.<br>
+    <span class="en">Paste a GitHub link. Get a plain-language safety verdict before you download or run anything.</span>
+  </div>
+
+  <div class="tabs">
+    <button class="tab on" id="tabAuto">1️⃣ Link se check karein <span class="en">(automatic)</span></button>
+    <button class="tab" id="tabManual">2️⃣ Khud dekh kar batayein <span class="en">(7 questions)</span></button>
+  </div>
+
+  <!-- AUTO -->
+  <div id="paneAuto">
+    <div class="card">
+      <input type="text" id="url" placeholder="https://github.com/owner/repo" autocomplete="off">
+      <button class="go" id="btn">Check karein / Check now</button>
+      <div class="hint" id="hint">Sirf link chahiye. Kuch download nahi hota, kuch chalta nahi — tool GitHub se sirf file list parhta hai.</div>
+    </div>
+    <div id="out"></div>
+  </div>
+
+  <!-- MANUAL -->
+  <div id="paneManual" class="hidden">
+    <div class="card">
+      <div style="font-weight:700;margin-bottom:4px">Repo khol kar 7 sawal ka jawab dein</div>
+      <div class="en" style="margin-bottom:6px">Works without internet access. Open the repo in your browser and answer honestly.</div>
+      <div id="qs"></div>
+    </div>
+    <div id="outManual"></div>
+  </div>
+
+  <details>
+    <summary>😰 Maine pehle hi chala liya hai — ab kya karun? <span class="en">(I already ran it)</span></summary>
+    <ol class="steps">
+      <li>Us computer ka internet band kar dein.</li>
+      <li><b>Doosre saaf device se</b> Discord ka password badlein, sab sessions se logout karein, 2FA backup codes naye banayein.</li>
+      <li>Browser mein save sab passwords badlein — pehle email, banking, GitHub.</li>
+      <li>Google / GitHub / Discord par connected apps aur active sessions revoke karein.</li>
+      <li>API keys aur access tokens naye banayein.</li>
+      <li><b>Crypto: naya wallet naye seed phrase se banayein aur funds transfer karein.</b> Purana seed compromised samjhein.</li>
+      <li>Antivirus / Windows Defender dobara on karein aur full scan chalayein.</li>
+      <li>Startup entries aur scheduled tasks check karein.</li>
+      <li>Sab se safe: sirf documents ka backup lein (koi .exe nahi), phir Windows dobara install karein.</li>
+      <li>Jin logon ka data us machine par tha, un ko bata dein.</li>
+    </ol>
+  </details>
+
+  <details>
+    <summary>🧪 Agar test karna zaroori ho <span class="en">(safe lab in 6 steps)</span></summary>
+    <ol class="steps">
+      <li>VirtualBox / VMware / Hyper-V mein aik throwaway VM banayein.</li>
+      <li><b>Chalane se pehle har baar snapshot lein.</b> Yehi sab se aham habit hai.</li>
+      <li>VM ka network "host-only" ya bilkul off rakhein.</li>
+      <li>Shared folder, clipboard sharing, drag-and-drop band rakhein.</li>
+      <li>VM ke andar koi asli account login na karein — na Discord, na browser sync, na wallet, na SSH key.</li>
+      <li>Kaam ke baad snapshot revert karein. Gandi VM dobara istemal na karein.</li>
+    </ol>
+  </details>
+
+  <details>
+    <summary>❓ Ye tool kya dekhta hai? <span class="en">(how it decides)</span></summary>
+    <p class="ur">Ye tool repo ki file list, file sizes aur README parhta hai aur 8 khatray ke nishan talash karta hai: packed binary (.exe/.rar/.zip), source code ka na hona, bahri download link (MediaFire/Mega/Telegram), chalte waqt code download karna, committed secrets (token.txt/.env), self-update (version.txt), install scripts, aur hardcoded webhook/bot token.</p>
+      <p class="en">It reads only public metadata via the GitHub API — the file tree, file sizes, and README text. It never downloads, extracts, or runs anything. A green result means the code is unlikely to attack <i>you</i>; it does <b>not</b> mean the tool is legal to use on someone else.</p>
+  </details>
+
+  <div class="foot">
+    Defensive &amp; educational use only. Kisi doosre ke system par bina likhi hui ijazat kuch bhi chalana jurm hai (Pakistan: PECA 2016).<br>
+    No data leaves your browser except a public read-only request to api.github.com.
+  </div>
+</div>
+
+<script>
+/* ---------- tabs ---------- */
+const tA=document.getElementById('tabAuto'), tM=document.getElementById('tabManual');
+const pA=document.getElementById('paneAuto'), pM=document.getElementById('paneManual');
+tA.onclick=()=>{tA.classList.add('on');tM.classList.remove('on');pA.classList.remove('hidden');pM.classList.add('hidden');};
+tM.onclick=()=>{tM.classList.add('on');tA.classList.remove('on');pM.classList.remove('hidden');pA.classList.add('hidden');};
+
+/* ---------- helpers ---------- */
+const BIN=/\.(exe|rar|7z|zip|msi|apk|dmg|jar|scr|iso)$/i;
+const SRC=/\.(py|js|ts|go|rs|c|cc|cpp|cs|java|rb|php|sh|ps1|lua|kt|swift|pl|vb)$/i;
+const HOSTS=/(mediafire|mega\.nz|mega\.io|anonfiles|gofile\.io|t\.me|telegra\.ph|bit\.ly|cutt\.ly|drive\.google|dropbox|pixeldrain|filebin)/i;
+const SECRET=/^(token\.txt|tokens\.txt|\.env|config\.json|webhook\.txt|creds?\.txt)$/i;
+const EXFIL=/(discord(app)?\.com\/api\/webhooks|api\.telegram\.org|pastebin\.com\/api)/i;
+const REMOTE=/(raw\.githubusercontent\.com|curl\s+[^\n]*\|\s*(ba)?sh|iwr\s|invoke-webrequest)/i;
+const INSTALL=/^(setup|install)\.(sh|bat|ps1|py)$/i;
+
+function fmtMB(b){return (b/1048576).toFixed(1)+' MB';}
+function esc(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+
+function render(target, flags, meta){
+  let score=0; flags.forEach(f=>score+=f.w);
+  let cls='v-green', head='✅ Zyada tar theek lagta hai', sub='Code mein aap ke khilaf koi saaf hamla nahi mila.';
+  let en='No clear attack against the user was found in the visible code.';
+  let act=['Phir bhi install script khud parhein.','Pehli baar chalana ho to VM mein chalayein.','Yaad rahein: saaf code ka matlab qanooni maqsad nahi hota.'];
+  if(score>=6){cls='v-red';head='⛔ Ye chalana khatarnak hai';sub='Is repo mein aisay nishan hain jo aksar user ko hi target karte hain.';
+    en='Strong indicators that this targets whoever runs it.';
+    act=['Download ya extract na karein. Build na karein.','Sirf GitHub website par code parhein.','Kisi ko forward na karein. Chahein to GitHub par report kar dein.'];}
+  else if(score>=3){cls='v-yellow';head='⚠️ Ehtiyat karein';sub='Kuch cheezein shak wali hain — bina samjhe chalana theek nahi.';
+    en='Some risky patterns found. Do not run it on your real machine.';
+    act=['Apni asli machine par na chalayein.','Neeche diye gaye har flag ko khud verify karein.','Sirf throwaway VM mein, network off kar ke test karein.'];}
+
+  let html='<div class="verdict '+cls+'">'
+    +'<h2>'+head+'</h2><div class="ur">'+sub+'</div><div class="en">'+en+'</div>'
+    +'<div class="score" style="margin-top:8px">Risk score: '+score+'</div></div>';
+
+  if(meta) html+='<div class="card"><b>'+esc(meta.full_name)+'</b> — ⭐ '+(meta.stargazers_count||0)
+    +' · '+(meta.language||'unknown')+' · files checked: '+meta.filesChecked
+    +'<div class="en">Stars safety ka saboot nahi hain. Popular repos bhi malware ho sakte hain.</div></div>';
+
+  html+='<div class="card"><b>Ab kya karein / What to do</b><ol class="steps">'
+    +act.map(a=>'<li>'+a+'</li>').join('')+'</ol></div>';
+
+  if(flags.length){
+    html+='<div class="card"><b>Kya mila / Findings</b><ul class="flags">';
+    flags.sort((a,b)=>b.w-a.w).forEach(f=>{
+      const sv=f.w>=4?'s-high':(f.w>=2?'s-med':'s-ok');
+      const lb=f.w>=4?'HIGH':(f.w>=2?'CHECK':'INFO');
+      html+='<li><span class="sev '+sv+'">'+lb+'</span><b>'+esc(f.t)+'</b><div class="why">'+esc(f.w2)+'</div></li>';
+    });
+    html+='</ul></div>';
+  }
+  target.innerHTML=html;
+  target.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+/* ---------- auto mode ---------- */
+const out=document.getElementById('out'), btn=document.getElementById('btn');
+btn.onclick=async()=>{
+  const raw=document.getElementById('url').value.trim();
+  const m=raw.match(/github\.com\/([^\/\s]+)\/([^\/\s#?]+)/i) || raw.match(/^([\w.-]+)\/([\w.-]+)$/);
+  if(!m){out.innerHTML='<div class="card">Link theek nahi lag raha. Aisay dein: <code>https://github.com/owner/repo</code></div>';return;}
+  const owner=m[1], repo=m[2].replace(/\.git$/,'');
+  btn.disabled=true; btn.textContent='Check ho raha hai...';
+  out.innerHTML='<div class="card">GitHub se file list parhi ja rahi hai... <span class="en">Reading public metadata only.</span></div>';
+  try{
+    const base='https://api.github.com/repos/'+owner+'/'+repo;
+    const [rM,rC]=await Promise.all([fetch(base),fetch(base+'/contents/')]);
+    if(!rM.ok) throw new Error(rM.status===404?'Repo nahi mila (ya private hai).':'GitHub ne jawab nahi diya ('+rM.status+').');
+    const meta=await rM.json();
+    const files=rC.ok?await rC.json():[];
+    let readme='';
+    try{
+      const rr=await fetch(base+'/readme',{headers:{Accept:'application/vnd.github.v3.raw'}});
+      if(rr.ok) readme=await rr.text();
+    }catch(e){}
+
+    const flags=[];
+    const names=files.filter(f=>f.type==='file').map(f=>f.name);
+    const bins=files.filter(f=>f.type==='file'&&BIN.test(f.name));
+    const srcs=files.filter(f=>f.type==='file'&&SRC.test(f.name));
+    const dirs=files.filter(f=>f.type==='dir');
+    const big=files.filter(f=>f.type==='file'&&f.size>3000000);
+
+    if(bins.length) flags.push({w:5,t:'Ready-made program file mila: '+bins.map(b=>b.name).join(', '),
+      w2:'Jo cheez aap parh nahi sakte, us par bharosa nahi kar sakte. Aksar stealer isi tarah bhejay jaate hain.'});
+    if(big.length) flags.push({w:4,t:'Bohot bara file: '+big.map(b=>b.name+' ('+fmtMB(b.size)+')').join(', '),
+      w2:'Itna bara file source code nahi hota — ye packed program hota hai, jaan boojh kar chupaya gaya.'});
+    if(srcs.length===0&&dirs.length===0) flags.push({w:4,t:'Koi source code hi nahi hai',
+      w2:'Sirf README ya archive hai. Matlab asli file kahin bahar se aayegi, jise koi review nahi karta.'});
+    if(readme&&HOSTS.test(readme)) flags.push({w:4,t:'README bahri download link deta hai (MediaFire / Mega / Telegram waghera)',
+      w2:'File GitHub par nahi hai, is liye kabhi bhi badli ja sakti hai. GitHub sirf bharosa udhaar lene ke liye istemal ho raha hai.'});
+    if(readme&&EXFIL.test(readme)) flags.push({w:5,t:'Webhook / bot API address code mein likha hua hai',
+      w2:'Iska matlab data kahin bheja jaata hai. Agar wo jagah aap ki nahi, to target aap hain.'});
+    if(readme&&REMOTE.test(readme)) flags.push({w:3,t:'Chalte waqt internet se code download karta hai',
+      w2:'Aaj code saaf ho sakta hai, kal author badal sakta hai. Aap ka fork bhi aap ko nahi bachata.'});
+    names.filter(n=>SECRET.test(n)).forEach(n=>flags.push({w:2,t:'Secret file repo mein commit hai: '+n,
+      w2:'Yahan se andaza hota hai ke project ki security hygiene kamzor hai. Purana token git history aur har fork mein reh jaata hai.'}));
+    if(names.some(n=>/^version\.txt$/i.test(n))) flags.push({w:2,t:'Self-update marker (version.txt)',
+      w2:'Program khud ko update kar sakta hai, yani jo code aap ne parha wo chalne wala code nahi.'});
+    names.filter(n=>INSTALL.test(n)).forEach(n=>flags.push({w:2,t:'Install script: '+n,
+      w2:'Yahin cheezein download hoti hain aur permissions milti hain. Chalane se pehle line by line parhein.'}));
+    if(meta.stargazers_count>=200) flags.push({w:1,t:'Popular repo ('+meta.stargazers_count+' stars)',
+      w2:'Stars sirf shohrat hain, safety ka saboot nahi. Kai malware repos ke hazaar stars hote hain.'});
+    if(srcs.length&&!bins.length&&!big.length) flags.push({w:0,t:'Parhne qabil source code mojood hai ('+srcs.length+' files)',
+      w2:'Achhi baat hai — aap khud audit kar sakte hain. Sab se pehle install script parhein.'});
+    if(meta.license&&meta.license.spdx_id&&meta.license.spdx_id!=='NOASSERTION') flags.push({w:0,t:'License mojood hai ('+meta.license.spdx_id+')',
+      w2:'License hona serious project ki nishani hai (magar guarantee nahi).'});
+
+    meta.filesChecked=files.length;
+    render(out,flags,meta);
+  }catch(e){
+    out.innerHTML='<div class="card"><b>Automatic check nahi ho saka.</b><div class="why">'+esc(e.message||e)
+      +'</div><div class="ur" style="margin-top:8px">Koi masla nahi — upar "Khud dekh kar batayein" tab kholein aur 7 sawal ka jawab dein. Wo bilkul offline kaam karta hai.</div></div>';
+  }finally{ btn.disabled=false; btn.textContent='Check karein / Check now'; }
+};
+document.getElementById('url').addEventListener('keydown',e=>{if(e.key==='Enter')btn.click();});
+
+/* ---------- manual mode ---------- */
+const QS=[
+  {t:'Repo mein .exe, .rar, .zip ya .7z file hai (aur source code nahi)?',
+   s:'Open the repo and look at the file list. Just one packaged file?',w:5,
+   w2:'Jo cheez parhi na ja sake wo chalani nahi chahiye. Packing jaan boojh kar ki jaati hai.'},
+  {t:'README kisi bahri site (MediaFire, Mega, Telegram, Discord) se download karne ko kehta hai?',s:'External download link in the README?',w:4,
+   w2:'File GitHub par nahi hai, is liye kabhi bhi badli ja sakti hai aur koi review nahi karta.'},
+  {t:'Kya kahin webhook URL, bot token, ya pastebin address likha nazar aaya?',s:'Search the repo for "webhook", "discord.com/api", "api.telegram.org".',w:5,
+   w2:'Data kahin bheja ja raha hai. Agar wo jagah aap ki nahi, to target aap hain.'},
+  {t:'Chalte waqt ye internet se code download karta hai (raw.githubusercontent.com, curl, wget)?',s:'Search for "raw.githubusercontent.com" or "wget".',w:3,
+   w2:'Aaj ka saaf code kal badal sakta hai. Audit bekaar ho jaata hai.'},
+  {t:'Repo mein token.txt, .env, ya version.txt jaisi file hai?',s:'Committed secrets or a self-update marker?',w:2,
+   w2:'Security hygiene kamzor hai, aur program khud ko badal sakta hai.'},
+  {t:'setup.sh / install.sh / setup.bat hai jo aap ne parha nahi?',s:'An install script you have not read line by line?',w:2,
+   w2:'Yahin download hote hain aur permissions milti hain — logon ka sab se ziada skip kiya gaya file.'},
+  {t:'Sari history sirf aik "Initial commit" hai jismein tayyar program parh diya gaya?',s:'One single commit dropping a finished build?',w:3,
+   w2:'Ye development nahi, distribution hai. Asli projects dheere dheere bante hain.'}
+];
+const ans={}, qbox=document.getElementById('qs'), outM=document.getElementById('outManual');
+QS.forEach((q,i)=>{
+  const d=document.createElement('div'); d.className='q';
+  d.innerHTML='<div class="qt">'+(i+1)+'. '+esc(q.t)+'</div><div class="qs">'+esc(q.s)+'</div>'
+    +'<div class="yn"><button data-i="'+i+'" data-v="1">Haan / Yes</button>'
+    +'<button data-i="'+i+'" data-v="0">Nahi / No</button></div>';
+  qbox.appendChild(d);
+});
+qbox.addEventListener('click',e=>{
+  const b=e.target.closest('button[data-i]'); if(!b)return;
+  const i=+b.dataset.i, v=b.dataset.v==='1';
+  ans[i]=v;
+  b.parentNode.querySelectorAll('button').forEach(x=>{x.className='';});
+  b.className=v?'sel-bad':'sel-good';
+  const flags=[];
+  Object.keys(ans).forEach(k=>{ if(ans[k]) flags.push({w:QS[k].w,t:QS[k].t,w2:QS[k].w2}); });
+  if(Object.keys(ans).length>=3) render(outM,flags,null);
+});
+</script>
+</body>
+</html>
